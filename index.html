@@ -4967,6 +4967,52 @@ function _Browser_load(url)
 		}
 	}));
 }
+
+
+
+function _Time_now(millisToPosix)
+{
+	return _Scheduler_binding(function(callback)
+	{
+		callback(_Scheduler_succeed(millisToPosix(Date.now())));
+	});
+}
+
+var _Time_setInterval = F2(function(interval, task)
+{
+	return _Scheduler_binding(function(callback)
+	{
+		var id = setInterval(function() { _Scheduler_rawSpawn(task); }, interval);
+		return function() { clearInterval(id); };
+	});
+});
+
+function _Time_here()
+{
+	return _Scheduler_binding(function(callback)
+	{
+		callback(_Scheduler_succeed(
+			A2($elm$time$Time$customZone, -(new Date().getTimezoneOffset()), _List_Nil)
+		));
+	});
+}
+
+
+function _Time_getZoneName()
+{
+	return _Scheduler_binding(function(callback)
+	{
+		try
+		{
+			var name = $elm$time$Time$Name(Intl.DateTimeFormat().resolvedOptions().timeZone);
+		}
+		catch (e)
+		{
+			var name = $elm$time$Time$Offset(new Date().getTimezoneOffset());
+		}
+		callback(_Scheduler_succeed(name));
+	});
+}
 var $elm$core$Basics$EQ = {$: 'EQ'};
 var $elm$core$Basics$GT = {$: 'GT'};
 var $elm$core$Basics$LT = {$: 'LT'};
@@ -10568,6 +10614,9 @@ var $elm$core$Basics$never = function (_v0) {
 	}
 };
 var $elm$browser$Browser$document = _Browser_document;
+var $author$project$Main$GotTime = function (a) {
+	return {$: 'GotTime', a: a};
+};
 var $author$project$Main$logOfTheDayExample = $elm$core$Dict$fromList(
 	_List_fromArray(
 		[
@@ -10590,10 +10639,26 @@ var $author$project$Main$logOfTheDayExample = $elm$core$Dict$fromList(
 						_Utils_Tuple2('13:00', 1)
 					])))
 		]));
+var $elm$time$Time$Name = function (a) {
+	return {$: 'Name', a: a};
+};
+var $elm$time$Time$Offset = function (a) {
+	return {$: 'Offset', a: a};
+};
+var $elm$time$Time$Zone = F2(
+	function (a, b) {
+		return {$: 'Zone', a: a, b: b};
+	});
+var $elm$time$Time$customZone = $elm$time$Time$Zone;
+var $elm$time$Time$Posix = function (a) {
+	return {$: 'Posix', a: a};
+};
+var $elm$time$Time$millisToPosix = $elm$time$Time$Posix;
+var $elm$time$Time$now = _Time_now($elm$time$Time$millisToPosix);
 var $author$project$Main$init = function (flags) {
 	return _Utils_Tuple2(
-		{activity: $elm$core$Maybe$Nothing, currentTime: $elm$core$Maybe$Nothing, log: $author$project$Main$logOfTheDayExample},
-		$elm$core$Platform$Cmd$none);
+		{activity: $elm$core$Maybe$Nothing, log: $author$project$Main$logOfTheDayExample, time: $elm$core$Maybe$Nothing},
+		A2($elm$core$Task$perform, $author$project$Main$GotTime, $elm$time$Time$now));
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
 var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
@@ -10602,7 +10667,41 @@ var $author$project$Main$subscriptions = function (model) {
 };
 var $author$project$Main$update = F2(
 	function (msg, model) {
-		return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+		switch (msg.$) {
+			case 'GotTime':
+				var time = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{
+							time: $elm$core$Maybe$Just(time)
+						}),
+					$elm$core$Platform$Cmd$none);
+			case 'Start':
+				var activity = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{
+							activity: function () {
+								var _v1 = model.time;
+								if (_v1.$ === 'Nothing') {
+									return $elm$core$Maybe$Nothing;
+								} else {
+									var time = _v1.a;
+									return $elm$core$Maybe$Just(
+										{name: activity, startedAt: time});
+								}
+							}()
+						}),
+					$elm$core$Platform$Cmd$none);
+			default:
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{activity: $elm$core$Maybe$Nothing}),
+					$elm$core$Platform$Cmd$none);
+		}
 	});
 var $elm$html$Html$main_ = _VirtualDom_node('main');
 var $elm$html$Html$Attributes$placeholder = $elm$html$Html$Attributes$stringProperty('placeholder');
@@ -10766,9 +10865,9 @@ var $author$project$Main$view = function (model) {
 					]),
 				_List_fromArray(
 					[
-						$author$project$Main$viewLogByTime($author$project$Main$logOfTheDayExample),
-						$author$project$Main$viewLog($author$project$Main$logOfTheDayExample),
-						$author$project$Main$viewStartableActivities($author$project$Main$logOfTheDayExample),
+						$author$project$Main$viewLogByTime(model.log),
+						$author$project$Main$viewLog(model.log),
+						$author$project$Main$viewStartableActivities(model.log),
 						A2(
 						$elm$html$Html$section,
 						_List_fromArray(
@@ -10811,7 +10910,7 @@ var $author$project$Main$view = function (model) {
 var $author$project$Main$main = $elm$browser$Browser$document(
 	{init: $author$project$Main$init, subscriptions: $author$project$Main$subscriptions, update: $author$project$Main$update, view: $author$project$Main$view});
 _Platform_export({'Main':{'init':$author$project$Main$main(
-	$elm$json$Json$Decode$succeed(_Utils_Tuple0))({"versions":{"elm":"0.19.1"},"types":{"message":"msg","aliases":{},"unions":{}}})}});}(this));
+	$elm$json$Json$Decode$succeed(_Utils_Tuple0))({"versions":{"elm":"0.19.1"},"types":{"message":"Main.Msg","aliases":{"Main.ActivityName":{"args":[],"type":"String.String"}},"unions":{"Main.Msg":{"args":[],"tags":{"GotTime":["Time.Posix"],"Start":["Main.ActivityName"],"Stop":[]}},"Time.Posix":{"args":[],"tags":{"Posix":["Basics.Int"]}},"String.String":{"args":[],"tags":{"String":[]}},"Basics.Int":{"args":[],"tags":{"Int":[]}}}}})}});}(this));
 
   var app = Elm.Main.init({ node: document.getElementById("elm") });
 }

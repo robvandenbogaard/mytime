@@ -4,6 +4,7 @@ import Browser
 import Dict exposing (Dict)
 import Html
 import Html.Attributes as Html
+import Task
 import Time
 
 
@@ -16,18 +17,42 @@ main =
         }
 
 
-init : () -> ( Model, Cmd msg )
+init : () -> ( Model, Cmd Msg )
 init flags =
     ( { log = logOfTheDayExample
       , activity = Nothing
-      , currentTime = Nothing
+      , time = Nothing
       }
-    , Cmd.none
+    , Task.perform GotTime Time.now
     )
 
 
 update msg model =
-    ( model, Cmd.none )
+    case msg of
+        GotTime time ->
+            ( { model | time = Just time }, Cmd.none )
+
+        Start activity ->
+            -- TODO: Save running activity to log
+            ( { model
+                | activity =
+                    case model.time of
+                        Nothing ->
+                            Nothing
+
+                        Just time ->
+                            Just { name = activity, startedAt = time }
+              }
+            , Cmd.none
+            )
+
+        Stop ->
+            -- TODO: Save running activity to log
+            ( { model | activity = Nothing }, Cmd.none )
+
+
+
+--    ( model, Cmd.none )
 
 
 subscriptions model =
@@ -37,13 +62,19 @@ subscriptions model =
 type alias Model =
     { log : LogOfTheDay
     , activity : Maybe Activity
-    , currentTime : Maybe Time.Posix
+    , time : Maybe Time.Posix
     }
+
+
+type Msg
+    = GotTime Time.Posix
+    | Start ActivityName
+    | Stop
 
 
 type alias Activity =
     { name : ActivityName
-    , startedAt : LogTime
+    , startedAt : Time.Posix
     }
 
 
@@ -79,9 +110,9 @@ view model =
     { title = "My time"
     , body =
         [ Html.main_ [ Html.style "margin" "1em" ]
-            [ viewLogByTime logOfTheDayExample
-            , viewLog logOfTheDayExample
-            , viewStartableActivities logOfTheDayExample
+            [ viewLogByTime model.log
+            , viewLog model.log
+            , viewStartableActivities model.log
             , Html.section [ Html.style "margin" "1em" ]
                 [ Html.input
                     [ Html.style "width" "100%"
