@@ -10614,31 +10614,9 @@ var $elm$core$Basics$never = function (_v0) {
 	}
 };
 var $elm$browser$Browser$document = _Browser_document;
-var $author$project$Main$GotTime = function (a) {
-	return {$: 'GotTime', a: a};
+var $author$project$Main$GotTimeZone = function (a) {
+	return {$: 'GotTimeZone', a: a};
 };
-var $author$project$Main$logOfTheDayExample = $elm$core$Dict$fromList(
-	_List_fromArray(
-		[
-			_Utils_Tuple2(
-			'lunch',
-			$elm$core$Dict$fromList(
-				_List_fromArray(
-					[
-						_Utils_Tuple2('12:00', 1)
-					]))),
-			_Utils_Tuple2('break', $elm$core$Dict$empty),
-			_Utils_Tuple2('mail', $elm$core$Dict$empty),
-			_Utils_Tuple2('sanitary', $elm$core$Dict$empty),
-			_Utils_Tuple2(
-			'write report',
-			$elm$core$Dict$fromList(
-				_List_fromArray(
-					[
-						_Utils_Tuple2('10:00', 2),
-						_Utils_Tuple2('13:00', 1)
-					])))
-		]));
 var $elm$time$Time$Name = function (a) {
 	return {$: 'Name', a: a};
 };
@@ -10650,31 +10628,87 @@ var $elm$time$Time$Zone = F2(
 		return {$: 'Zone', a: a, b: b};
 	});
 var $elm$time$Time$customZone = $elm$time$Time$Zone;
-var $elm$time$Time$Posix = function (a) {
-	return {$: 'Posix', a: a};
-};
-var $elm$time$Time$millisToPosix = $elm$time$Time$Posix;
-var $elm$time$Time$now = _Time_now($elm$time$Time$millisToPosix);
+var $elm$time$Time$here = _Time_here(_Utils_Tuple0);
+var $author$project$Main$logOfTheDayExample = $elm$core$Dict$fromList(
+	_List_fromArray(
+		[
+			_Utils_Tuple2('lunch', $elm$core$Dict$empty),
+			_Utils_Tuple2('break', $elm$core$Dict$empty),
+			_Utils_Tuple2('mail', $elm$core$Dict$empty),
+			_Utils_Tuple2('sanitary', $elm$core$Dict$empty),
+			_Utils_Tuple2('write report', $elm$core$Dict$empty)
+		]));
 var $author$project$Main$init = function (flags) {
 	return _Utils_Tuple2(
-		{activity: $elm$core$Maybe$Nothing, log: $author$project$Main$logOfTheDayExample, time: $elm$core$Maybe$Nothing},
-		A2($elm$core$Task$perform, $author$project$Main$GotTime, $elm$time$Time$now));
+		{activity: $elm$core$Maybe$Nothing, log: $author$project$Main$logOfTheDayExample, time: $elm$core$Maybe$Nothing, timezone: $elm$core$Maybe$Nothing},
+		A2($elm$core$Task$perform, $author$project$Main$GotTimeZone, $elm$time$Time$here));
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
 var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
 var $author$project$Main$subscriptions = function (model) {
 	return $elm$core$Platform$Sub$none;
 };
+var $author$project$Main$GotTimeAfter = F2(
+	function (a, b) {
+		return {$: 'GotTimeAfter', a: a, b: b};
+	});
+var $author$project$Main$oneHourInMillis = 3600000;
+var $elm$time$Time$posixToMillis = function (_v0) {
+	var millis = _v0.a;
+	return millis;
+};
+var $author$project$Main$logActivity = F4(
+	function (activity, stoppedAt, maybeStartedAt, log) {
+		if (maybeStartedAt.$ === 'Nothing') {
+			return log;
+		} else {
+			var startedAt = maybeStartedAt.a;
+			if (activity.$ === 'Nothing') {
+				return log;
+			} else {
+				var name = activity.a;
+				return A3(
+					$elm$core$Dict$update,
+					name,
+					function (entries) {
+						return $elm$core$Maybe$Just(
+							A3(
+								$elm$core$Dict$insert,
+								$elm$time$Time$posixToMillis(startedAt),
+								($elm$time$Time$posixToMillis(stoppedAt) - $elm$time$Time$posixToMillis(startedAt)) / $author$project$Main$oneHourInMillis,
+								A2($elm$core$Maybe$withDefault, $elm$core$Dict$empty, entries)));
+					},
+					log);
+			}
+		}
+	});
+var $elm$time$Time$Posix = function (a) {
+	return {$: 'Posix', a: a};
+};
+var $elm$time$Time$millisToPosix = $elm$time$Time$Posix;
+var $elm$time$Time$now = _Time_now($elm$time$Time$millisToPosix);
 var $author$project$Main$update = F2(
 	function (msg, model) {
 		switch (msg.$) {
-			case 'GotTime':
-				var time = msg.a;
+			case 'GotTimeAfter':
+				var runningActivity = msg.a;
+				var time = msg.b;
+				var log = A4($author$project$Main$logActivity, runningActivity, time, model.time, model.log);
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
 						{
+							log: log,
 							time: $elm$core$Maybe$Just(time)
+						}),
+					$elm$core$Platform$Cmd$none);
+			case 'GotTimeZone':
+				var zone = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{
+							timezone: $elm$core$Maybe$Just(zone)
 						}),
 					$elm$core$Platform$Cmd$none);
 			case 'Start':
@@ -10683,26 +10717,24 @@ var $author$project$Main$update = F2(
 					_Utils_update(
 						model,
 						{
-							activity: function () {
-								var _v1 = model.time;
-								if (_v1.$ === 'Nothing') {
-									return $elm$core$Maybe$Nothing;
-								} else {
-									var time = _v1.a;
-									return $elm$core$Maybe$Just(
-										{name: activity, startedAt: time});
-								}
-							}()
+							activity: $elm$core$Maybe$Just(activity)
 						}),
-					$elm$core$Platform$Cmd$none);
+					A2(
+						$elm$core$Task$perform,
+						$author$project$Main$GotTimeAfter(model.activity),
+						$elm$time$Time$now));
 			default:
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
 						{activity: $elm$core$Maybe$Nothing}),
-					$elm$core$Platform$Cmd$none);
+					A2(
+						$elm$core$Task$perform,
+						$author$project$Main$GotTimeAfter(model.activity),
+						$elm$time$Time$now));
 		}
 	});
+var $author$project$Main$Stop = {$: 'Stop'};
 var $elm$html$Html$main_ = _VirtualDom_node('main');
 var $elm$html$Html$Attributes$placeholder = $elm$html$Html$Attributes$stringProperty('placeholder');
 var $elm$html$Html$section = _VirtualDom_node('section');
@@ -10713,146 +10745,278 @@ var $elm$core$List$singleton = function (value) {
 	return _List_fromArray(
 		[value]);
 };
-var $author$project$Main$viewLogEntries = function (_v0) {
-	var time = _v0.a;
-	var hours = _v0.b;
-	return A2(
-		$elm$html$Html$dd,
-		_List_Nil,
-		_List_fromArray(
-			[
-				$elm$html$Html$text(
-				time + (' - ' + ($elm$core$String$fromFloat(hours) + ' uur')))
-			]));
+var $elm$core$String$cons = _String_cons;
+var $elm$core$String$fromChar = function (_char) {
+	return A2($elm$core$String$cons, _char, '');
 };
-var $author$project$Main$viewLogEntriesForActivity = function (_v0) {
-	var activity = _v0.a;
-	var entries = _v0.b;
-	return A2(
-		$elm$html$Html$dl,
-		_List_Nil,
-		A2(
-			$elm$core$List$cons,
+var $elm$core$Bitwise$shiftRightBy = _Bitwise_shiftRightBy;
+var $elm$core$String$repeatHelp = F3(
+	function (n, chunk, result) {
+		return (n <= 0) ? result : A3(
+			$elm$core$String$repeatHelp,
+			n >> 1,
+			_Utils_ap(chunk, chunk),
+			(!(n & 1)) ? result : _Utils_ap(result, chunk));
+	});
+var $elm$core$String$repeat = F2(
+	function (n, chunk) {
+		return A3($elm$core$String$repeatHelp, n, chunk, '');
+	});
+var $elm$core$String$pad = F3(
+	function (n, _char, string) {
+		var half = (n - $elm$core$String$length(string)) / 2;
+		return _Utils_ap(
 			A2(
-				$elm$html$Html$dt,
-				_List_Nil,
-				_List_fromArray(
-					[
-						$elm$html$Html$text(activity)
-					])),
-			$elm$core$List$singleton(
+				$elm$core$String$repeat,
+				$elm$core$Basics$ceiling(half),
+				$elm$core$String$fromChar(_char)),
+			_Utils_ap(
+				string,
 				A2(
-					$elm$html$Html$dd,
+					$elm$core$String$repeat,
+					$elm$core$Basics$floor(half),
+					$elm$core$String$fromChar(_char))));
+	});
+var $elm$time$Time$flooredDiv = F2(
+	function (numerator, denominator) {
+		return $elm$core$Basics$floor(numerator / denominator);
+	});
+var $elm$core$Basics$modBy = _Basics_modBy;
+var $elm$time$Time$toAdjustedMinutesHelp = F3(
+	function (defaultOffset, posixMinutes, eras) {
+		toAdjustedMinutesHelp:
+		while (true) {
+			if (!eras.b) {
+				return posixMinutes + defaultOffset;
+			} else {
+				var era = eras.a;
+				var olderEras = eras.b;
+				if (_Utils_cmp(era.start, posixMinutes) < 0) {
+					return posixMinutes + era.offset;
+				} else {
+					var $temp$defaultOffset = defaultOffset,
+						$temp$posixMinutes = posixMinutes,
+						$temp$eras = olderEras;
+					defaultOffset = $temp$defaultOffset;
+					posixMinutes = $temp$posixMinutes;
+					eras = $temp$eras;
+					continue toAdjustedMinutesHelp;
+				}
+			}
+		}
+	});
+var $elm$time$Time$toAdjustedMinutes = F2(
+	function (_v0, time) {
+		var defaultOffset = _v0.a;
+		var eras = _v0.b;
+		return A3(
+			$elm$time$Time$toAdjustedMinutesHelp,
+			defaultOffset,
+			A2(
+				$elm$time$Time$flooredDiv,
+				$elm$time$Time$posixToMillis(time),
+				60000),
+			eras);
+	});
+var $elm$time$Time$toHour = F2(
+	function (zone, time) {
+		return A2(
+			$elm$core$Basics$modBy,
+			24,
+			A2(
+				$elm$time$Time$flooredDiv,
+				A2($elm$time$Time$toAdjustedMinutes, zone, time),
+				60));
+	});
+var $elm$time$Time$toMinute = F2(
+	function (zone, time) {
+		return A2(
+			$elm$core$Basics$modBy,
+			60,
+			A2($elm$time$Time$toAdjustedMinutes, zone, time));
+	});
+var $author$project$Main$viewTime = F2(
+	function (zone, time) {
+		var posix = $elm$time$Time$millisToPosix(time);
+		return A3(
+			$elm$core$String$pad,
+			2,
+			_Utils_chr('0'),
+			$elm$core$String$fromInt(
+				A2($elm$time$Time$toHour, zone, posix))) + (':' + A3(
+			$elm$core$String$pad,
+			2,
+			_Utils_chr('0'),
+			$elm$core$String$fromInt(
+				A2($elm$time$Time$toMinute, zone, posix))));
+	});
+var $author$project$Main$viewLogEntries = F2(
+	function (timezone, _v0) {
+		var time = _v0.a;
+		var hours = _v0.b;
+		return A2(
+			$elm$html$Html$dd,
+			_List_Nil,
+			_List_fromArray(
+				[
+					$elm$html$Html$text(
+					A2($author$project$Main$viewTime, timezone, time) + (' - ' + ($elm$core$String$fromFloat(hours) + ' uur')))
+				]));
+	});
+var $author$project$Main$viewLogEntriesForActivity = F2(
+	function (timezone, _v0) {
+		var activity = _v0.a;
+		var entries = _v0.b;
+		return A2(
+			$elm$html$Html$dl,
+			_List_Nil,
+			A2(
+				$elm$core$List$cons,
+				A2(
+					$elm$html$Html$dt,
 					_List_Nil,
+					_List_fromArray(
+						[
+							$elm$html$Html$text(activity)
+						])),
+				$elm$core$List$singleton(
 					A2(
-						$elm$core$List$map,
-						$author$project$Main$viewLogEntries,
-						$elm$core$Dict$toList(entries))))));
-};
-var $author$project$Main$viewLog = function (activities) {
-	return A2(
-		$elm$html$Html$section,
-		_List_fromArray(
-			[
-				A2($elm$html$Html$Attributes$style, 'margin', '1em')
-			]),
-		A2(
-			$elm$core$List$map,
-			$author$project$Main$viewLogEntriesForActivity,
-			$elm$core$Dict$toList(activities)));
-};
+						$elm$html$Html$dd,
+						_List_Nil,
+						A2(
+							$elm$core$List$map,
+							$author$project$Main$viewLogEntries(timezone),
+							$elm$core$Dict$toList(entries))))));
+	});
+var $author$project$Main$viewLog = F2(
+	function (timezone, activities) {
+		return A2(
+			$elm$html$Html$section,
+			_List_fromArray(
+				[
+					A2($elm$html$Html$Attributes$style, 'margin', '1em')
+				]),
+			A2(
+				$elm$core$List$map,
+				$author$project$Main$viewLogEntriesForActivity(timezone),
+				$elm$core$Dict$toList(activities)));
+	});
 var $elm$core$List$sortBy = _List_sortBy;
 var $elm$html$Html$article = _VirtualDom_node('article');
-var $author$project$Main$viewTimeEntry = function (_v0) {
-	var time = _v0.a;
-	var activity = _v0.b;
-	var hours = _v0.c;
-	return A2(
-		$elm$html$Html$article,
-		_List_Nil,
-		_List_fromArray(
-			[
-				$elm$html$Html$text(
-				time + (' - ' + ($elm$core$String$fromFloat(hours) + ('h ' + activity))))
-			]));
-};
-var $author$project$Main$viewLogByTime = function (activities) {
-	return A2(
-		$elm$html$Html$section,
-		_List_fromArray(
-			[
-				A2($elm$html$Html$Attributes$style, 'margin', '1em')
-			]),
-		A2(
-			$elm$core$List$map,
-			$author$project$Main$viewTimeEntry,
+var $author$project$Main$viewTimeEntry = F2(
+	function (timezone, _v0) {
+		var time = _v0.a;
+		var activity = _v0.b;
+		var hours = _v0.c;
+		return A2(
+			$elm$html$Html$article,
+			_List_Nil,
+			_List_fromArray(
+				[
+					$elm$html$Html$text(
+					A2($author$project$Main$viewTime, timezone, time) + (' - ' + ($elm$core$String$fromFloat(hours) + ('h ' + activity))))
+				]));
+	});
+var $author$project$Main$viewLogByTime = F2(
+	function (timezone, activities) {
+		return A2(
+			$elm$html$Html$section,
+			_List_fromArray(
+				[
+					A2($elm$html$Html$Attributes$style, 'margin', '1em')
+				]),
 			A2(
-				$elm$core$List$sortBy,
-				function (_v2) {
-					var a = _v2.a;
-					var b = _v2.b;
-					var c = _v2.c;
-					return a;
-				},
-				$elm$core$List$concat(
+				$elm$core$List$map,
+				$author$project$Main$viewTimeEntry(timezone),
+				A2(
+					$elm$core$List$sortBy,
+					function (_v2) {
+						var a = _v2.a;
+						var b = _v2.b;
+						var c = _v2.c;
+						return a;
+					},
+					$elm$core$List$concat(
+						A2(
+							$elm$core$List$map,
+							function (_v0) {
+								var activity = _v0.a;
+								var entries = _v0.b;
+								return A2(
+									$elm$core$List$map,
+									function (_v1) {
+										var time = _v1.a;
+										var hours = _v1.b;
+										return _Utils_Tuple3(time, activity, hours);
+									},
+									$elm$core$Dict$toList(entries));
+							},
+							$elm$core$Dict$toList(activities))))));
+	});
+var $author$project$Main$Start = function (a) {
+	return {$: 'Start', a: a};
+};
+var $elm$json$Json$Encode$bool = _Json_wrap;
+var $elm$html$Html$Attributes$boolProperty = F2(
+	function (key, bool) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			$elm$json$Json$Encode$bool(bool));
+	});
+var $elm$html$Html$Attributes$disabled = $elm$html$Html$Attributes$boolProperty('disabled');
+var $author$project$Main$viewStartableActivity = F2(
+	function (runningActivity, activity) {
+		return A2(
+			$elm$html$Html$article,
+			_List_fromArray(
+				[
+					A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+					A2($elm$html$Html$Attributes$style, 'width', '100%'),
+					A2($elm$html$Html$Attributes$style, 'max-width', '20em')
+				]),
+			_List_fromArray(
+				[
 					A2(
-						$elm$core$List$map,
-						function (_v0) {
-							var activity = _v0.a;
-							var entries = _v0.b;
-							return A2(
-								$elm$core$List$map,
-								function (_v1) {
-									var time = _v1.a;
-									var hours = _v1.b;
-									return _Utils_Tuple3(time, activity, hours);
-								},
-								$elm$core$Dict$toList(entries));
-						},
-						$elm$core$Dict$toList(activities))))));
-};
-var $author$project$Main$viewStartableActivity = function (activity) {
-	return A2(
-		$elm$html$Html$article,
-		_List_fromArray(
-			[
-				A2($elm$html$Html$Attributes$style, 'display', 'flex'),
-				A2($elm$html$Html$Attributes$style, 'width', '100%'),
-				A2($elm$html$Html$Attributes$style, 'max-width', '20em')
-			]),
-		_List_fromArray(
-			[
-				A2(
-				$elm$html$Html$span,
-				_List_fromArray(
-					[
-						A2($elm$html$Html$Attributes$style, 'flex', '1')
-					]),
-				_List_fromArray(
-					[
-						$elm$html$Html$text(activity)
-					])),
-				A2(
-				$elm$html$Html$button,
-				_List_Nil,
-				_List_fromArray(
-					[
-						$elm$html$Html$text('Start')
-					]))
-			]));
-};
-var $author$project$Main$viewStartableActivities = function (activities) {
-	return A2(
-		$elm$html$Html$section,
-		_List_fromArray(
-			[
-				A2($elm$html$Html$Attributes$style, 'margin', '1em')
-			]),
-		A2(
-			$elm$core$List$map,
-			$author$project$Main$viewStartableActivity,
-			$elm$core$Dict$keys(activities)));
-};
+					$elm$html$Html$span,
+					_List_fromArray(
+						[
+							A2($elm$html$Html$Attributes$style, 'flex', '1')
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text(activity)
+						])),
+					A2(
+					$elm$html$Html$button,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$disabled(
+							_Utils_eq(
+								runningActivity,
+								$elm$core$Maybe$Just(activity))),
+							$elm$html$Html$Events$onClick(
+							$author$project$Main$Start(activity))
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text('Start')
+						]))
+				]));
+	});
+var $author$project$Main$viewStartableActivities = F2(
+	function (runningActivity, activities) {
+		return A2(
+			$elm$html$Html$section,
+			_List_fromArray(
+				[
+					A2($elm$html$Html$Attributes$style, 'margin', '1em')
+				]),
+			A2(
+				$elm$core$List$map,
+				$author$project$Main$viewStartableActivity(runningActivity),
+				$elm$core$Dict$keys(activities)));
+	});
 var $author$project$Main$view = function (model) {
 	return {
 		body: _List_fromArray(
@@ -10863,46 +11027,60 @@ var $author$project$Main$view = function (model) {
 					[
 						A2($elm$html$Html$Attributes$style, 'margin', '1em')
 					]),
-				_List_fromArray(
-					[
-						$author$project$Main$viewLogByTime(model.log),
-						$author$project$Main$viewLog(model.log),
-						$author$project$Main$viewStartableActivities(model.log),
-						A2(
-						$elm$html$Html$section,
-						_List_fromArray(
+				function () {
+					var _v0 = model.timezone;
+					if (_v0.$ === 'Nothing') {
+						return _List_fromArray(
 							[
-								A2($elm$html$Html$Attributes$style, 'margin', '1em')
-							]),
-						_List_fromArray(
+								$elm$html$Html$text('timezone not yet known')
+							]);
+					} else {
+						var timezone = _v0.a;
+						return _List_fromArray(
 							[
+								A2($author$project$Main$viewLogByTime, timezone, model.log),
+								A2($author$project$Main$viewLog, timezone, model.log),
+								A2($author$project$Main$viewStartableActivities, model.activity, model.log),
 								A2(
-								$elm$html$Html$input,
+								$elm$html$Html$section,
 								_List_fromArray(
 									[
-										A2($elm$html$Html$Attributes$style, 'width', '100%'),
-										A2($elm$html$Html$Attributes$style, 'max-width', '20em'),
-										$elm$html$Html$Attributes$placeholder('add other activity')
+										A2($elm$html$Html$Attributes$style, 'margin', '1em')
 									]),
-								_List_Nil)
-							])),
-						A2(
-						$elm$html$Html$section,
-						_List_fromArray(
-							[
-								A2($elm$html$Html$Attributes$style, 'margin', '1em')
-							]),
-						_List_fromArray(
-							[
-								A2(
-								$elm$html$Html$button,
-								_List_Nil,
 								_List_fromArray(
 									[
-										$elm$html$Html$text('Stop')
+										A2(
+										$elm$html$Html$input,
+										_List_fromArray(
+											[
+												A2($elm$html$Html$Attributes$style, 'width', '100%'),
+												A2($elm$html$Html$Attributes$style, 'max-width', '20em'),
+												$elm$html$Html$Attributes$placeholder('add other activity')
+											]),
+										_List_Nil)
+									])),
+								A2(
+								$elm$html$Html$section,
+								_List_fromArray(
+									[
+										A2($elm$html$Html$Attributes$style, 'margin', '1em')
+									]),
+								_List_fromArray(
+									[
+										A2(
+										$elm$html$Html$button,
+										_List_fromArray(
+											[
+												$elm$html$Html$Events$onClick($author$project$Main$Stop)
+											]),
+										_List_fromArray(
+											[
+												$elm$html$Html$text('Stop')
+											]))
 									]))
-							]))
-					]))
+							]);
+					}
+				}())
 			]),
 		title: 'My time'
 	};
@@ -10910,7 +11088,7 @@ var $author$project$Main$view = function (model) {
 var $author$project$Main$main = $elm$browser$Browser$document(
 	{init: $author$project$Main$init, subscriptions: $author$project$Main$subscriptions, update: $author$project$Main$update, view: $author$project$Main$view});
 _Platform_export({'Main':{'init':$author$project$Main$main(
-	$elm$json$Json$Decode$succeed(_Utils_Tuple0))({"versions":{"elm":"0.19.1"},"types":{"message":"Main.Msg","aliases":{"Main.ActivityName":{"args":[],"type":"String.String"}},"unions":{"Main.Msg":{"args":[],"tags":{"GotTime":["Time.Posix"],"Start":["Main.ActivityName"],"Stop":[]}},"Time.Posix":{"args":[],"tags":{"Posix":["Basics.Int"]}},"String.String":{"args":[],"tags":{"String":[]}},"Basics.Int":{"args":[],"tags":{"Int":[]}}}}})}});}(this));
+	$elm$json$Json$Decode$succeed(_Utils_Tuple0))({"versions":{"elm":"0.19.1"},"types":{"message":"Main.Msg","aliases":{"Main.ActivityName":{"args":[],"type":"String.String"},"Time.Era":{"args":[],"type":"{ start : Basics.Int, offset : Basics.Int }"}},"unions":{"Main.Msg":{"args":[],"tags":{"GotTimeAfter":["Maybe.Maybe Main.ActivityName","Time.Posix"],"GotTimeZone":["Time.Zone"],"Start":["Main.ActivityName"],"Stop":[]}},"Maybe.Maybe":{"args":["a"],"tags":{"Just":["a"],"Nothing":[]}},"Time.Posix":{"args":[],"tags":{"Posix":["Basics.Int"]}},"String.String":{"args":[],"tags":{"String":[]}},"Time.Zone":{"args":[],"tags":{"Zone":["Basics.Int","List.List Time.Era"]}},"Basics.Int":{"args":[],"tags":{"Int":[]}},"List.List":{"args":["a"],"tags":{}}}}})}});}(this));
 
   var app = Elm.Main.init({ node: document.getElementById("elm") });
 }
