@@ -1,8 +1,50 @@
 module Main exposing (main)
 
+import Browser
 import Dict exposing (Dict)
 import Html
 import Html.Attributes as Html
+import Time
+
+
+main =
+    Browser.document
+        { init = init
+        , view = view
+        , update = update
+        , subscriptions = subscriptions
+        }
+
+
+init : () -> ( Model, Cmd msg )
+init flags =
+    ( { log = logOfTheDayExample
+      , activity = Nothing
+      , currentTime = Nothing
+      }
+    , Cmd.none
+    )
+
+
+update msg model =
+    ( model, Cmd.none )
+
+
+subscriptions model =
+    Sub.none
+
+
+type alias Model =
+    { log : LogOfTheDay
+    , activity : Maybe Activity
+    , currentTime : Maybe Time.Posix
+    }
+
+
+type alias Activity =
+    { name : ActivityName
+    , startedAt : LogTime
+    }
 
 
 type alias Log =
@@ -33,22 +75,26 @@ type alias Hours =
     Float
 
 
-main =
-    Html.main_ [ Html.style "margin" "1em" ]
-        [ viewLogByTime logOfTheDayExample
-        , viewLog logOfTheDayExample
-        , viewStartableActivities logOfTheDayExample
-        , Html.section [ Html.style "margin" "1em" ]
-            [ Html.input
-                [ Html.style "width" "100%"
-                , Html.style "max-width" "20em"
-                , Html.placeholder "add other activity"
+view model =
+    { title = "My time"
+    , body =
+        [ Html.main_ [ Html.style "margin" "1em" ]
+            [ viewLogByTime logOfTheDayExample
+            , viewLog logOfTheDayExample
+            , viewStartableActivities logOfTheDayExample
+            , Html.section [ Html.style "margin" "1em" ]
+                [ Html.input
+                    [ Html.style "width" "100%"
+                    , Html.style "max-width" "20em"
+                    , Html.placeholder "add other activity"
+                    ]
+                    []
                 ]
-                []
+            , Html.section [ Html.style "margin" "1em" ]
+                [ Html.button [] [ Html.text "Stop" ] ]
             ]
-        , Html.section [ Html.style "margin" "1em" ]
-            [ Html.button [] [ Html.text "Stop" ] ]
         ]
+    }
 
 
 logOfTheDayExample =
